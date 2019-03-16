@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -32,176 +33,113 @@ FormTree recSimplify ( FormTree t ) {
 	else if (
 }*/
 
+FormTree childToParent( FormTree t, char c){
+  if (c=='l'){
+    FormTree t1=t->left;
+    freeTree(t->right);
+    free(t);
+    return t1;
+  }
+  FormTree t1=t->right;
+  freeTree(t->left);
+  free(t);
+  return t1;
+}
+
 FormTree recSimplify ( FormTree t ) {
 	if(t==NULL) {
     return t;
   }
   t->left = recSimplify(t->left);
   t->right = recSimplify(t->right);
-  if(t->t.symbol=='~' && t->left->t.symbol == 'T') {
-		t->t.symbol='F';
-    free(t->left);
-    t->left=NULL;
-    t->right=NULL;
-		return t;
+  if(t->t.symbol=='~' && t->left->t.symbol == 'T') { // NEGATION
+		t->left->t.symbol='F';
+    return t=childToParent(t,'l');
 	}
 	if(t->t.symbol=='~' && t->left->t.symbol == 'F'){
-		t->t.symbol='T';
-    free(t->left);
-    t->left=NULL;
-    t->right=NULL;
-		return t;
+		t->left->t.symbol='T';
+    return t=childToParent(t,'l');
 	}
-  if(t->t.symbol=='~' && t->left->t.symbol == '~' && t->left->left->tt == Identifier) {
-		FormTree store=newFormTreeNode(Identifier,t->left->left->t, NULL, NULL);
-    free(t->left->left);
-    free(t->left);
-    t=store;
-    free(store);
-    return t;
+  if(t->t.symbol=='~' && t->left->t.symbol == '~' && 
+    t->left->left->tt == Identifier) {
+    t->left=childToParent(t->left,'l');
+    return t=childToParent(t,'l');
   }
   
-  
-  if(t->t.symbol=='|' && t->left->tt == Symbol && t->right->tt == Identifier) { // OR
+  if(t->t.symbol=='|' && t->left->tt == Symbol) { // DISJUNCTION
     if (t->left->t.symbol == 'T'){
-      t->t.symbol='T';
-      free(t->left);
-      free(t->right);
-      t->left=NULL;
-      t->right=NULL;
-      return t;
+      return t=childToParent(t,'l');
     }
     else if (t->left->t.symbol == 'F') {
-      FormTree store=newFormTreeNode(Identifier,t->right->t, NULL, NULL);
-      free(t->left);
-      free(t->right);
-      t=store;
-      free(store);
-      return t;
+      return t=childToParent(t,'r');
     }
   }
-  if(t->t.symbol=='|' && t->right->tt == Symbol && t->left->tt == Identifier) {
+  if(t->t.symbol=='|' && t->right->tt == Symbol) {
     if (t->right->t.symbol == 'T'){
-      t->t.symbol='T';
-      free(t->left);
-      free(t->right);
-      t->left=NULL;
-      t->right=NULL;
-      return t;
+      return t=childToParent(t,'r');
     }
     else if (t->right->t.symbol == 'F') {
-      FormTree store=newFormTreeNode(Identifier,t->left->t, NULL, NULL);
-      free(t->left);
-      free(t->right);
-      t=store;
-      free(store);
-      return t;
+      return t=childToParent(t,'l');
     }
   }
   
-  
-  if(t->t.symbol=='&' && t->left->tt == Symbol && t->right->tt == Identifier) { // AND
+  if(t->t.symbol=='&' && t->left->tt == Symbol) { // CONJUNCTION
     if (t->left->t.symbol == 'F'){
-      t->t.symbol='F';
-      free(t->left);
-      free(t->right);
-      t->left=NULL;
-      t->right=NULL;
-      return t;
+      return t=childToParent(t,'l');
     }
     else if (t->left->t.symbol == 'T') {
-      FormTree store=newFormTreeNode(Identifier,t->right->t, NULL, NULL);
-      free(t->left);
-      free(t->right);
-      t=store;
-      free(store);     
-      return t;
+      return t=childToParent(t,'r');
     }
   }
-  if(t->t.symbol=='&' && t->right->tt == Symbol && t->left->tt == Identifier) {
+  if(t->t.symbol=='&' && t->right->tt == Symbol) {
     if (t->right->t.symbol == 'F'){
-      t->t.symbol='F';
-      free(t->left);
-      free(t->right);
-      t->left=NULL;
-      t->right=NULL;
-      return t;
+      return t=childToParent(t,'r');
     }
     else if (t->right->t.symbol == 'T') {
-      FormTree store=newFormTreeNode(Identifier,t->left->t, NULL, NULL);
-      free(t->left);
-      free(t->right);
-      t=store;
-      free(store); 
-      return t;
+      return t=childToParent(t,'l');
     }
   }
   
-  
-  if(t->t.symbol=='>' && t->left->tt == Symbol && t->right->tt == Identifier) { // IMPLICATION
+  if(t->t.symbol=='>' && t->left->tt == Symbol) { // IMPLICATION
     if (t->left->t.symbol == 'F'){
-      t->t.symbol='T';
-      free(t->left);
-      free(t->right);
-      t->left=NULL;
-      t->right=NULL;
-      return t;
+      t->left->t.symbol='T';
+      return t=childToParent(t,'l');
     }
     else if (t->left->t.symbol == 'T') {
-      FormTree store=newFormTreeNode(Identifier,t->right->t, NULL, NULL);
-      free(t->left);
-      free(t->right);
-      t=store;
-      free(store); 
-      return t;
+      return t=childToParent(t,'r');
     }
   }
-  if(t->t.symbol=='>' && t->right->tt == Symbol && t->left->tt == Identifier) {
+  if(t->t.symbol=='>' && t->right->tt == Symbol) {
     if (t->right->t.symbol == 'T'){
-      t->t.symbol='T';
-      free(t->left);
-      free(t->right);
-      t->left=NULL;
-      t->right=NULL;
-      return t;
+      return t=childToParent(t,'r');
     }
     else if (t->right->t.symbol == 'F') {
       t->t.symbol='~';
-      free(t->right);
+      freeTree(t->right);
       t->right=NULL;
       return t;
     }
   }
   
-  if(t->t.symbol=='<' && t->left->tt == Symbol && t->right->tt == Identifier) { // BICONDITIONAL
+  if(t->t.symbol=='<' && t->left->tt == Symbol) {   //BICONDITIONAL
     if (t->left->t.symbol == 'T'){
-      FormTree store=newFormTreeNode(Identifier,t->right->t, NULL, NULL);
-      free(t->left);
-      free(t->right);
-      t=store;
-      free(store); 
-      return t;
+      return t=childToParent(t,'r');
     }
     else if (t->left->t.symbol == 'F') {
       t->t.symbol='~';
+      free(t->left);
       t->left=t->right;
-      free(t->right);
       t->right=NULL;
       return t;
     }
   }
-  if(t->t.symbol=='<' && t->right->tt == Symbol && t->left->tt == Identifier) {
+  if(t->t.symbol=='<' && t->right->tt == Symbol) {
     if (t->right->t.symbol == 'T'){
-      FormTree store=newFormTreeNode(Identifier,t->left->t, NULL, NULL);
-      free(t->left);
-      free(t->right);
-      t=store;
-      free(store); 
-      return t;
+      return t=childToParent(t,'l');
     }
     else if (t->right->t.symbol == 'F') {
       t->t.symbol='~';
-      free(t->right);
+      freeTree(t->right);
       t->right=NULL;
       return t;
     }
@@ -328,3 +266,4 @@ int main(int argc, char *argv[]) {
   printf("good bye\n");
   return 0;
 }
+
