@@ -5,33 +5,16 @@
 #include "scanner.h"
 #include "treeForm.h"
 
-/*
-FormTree recSimplify ( FormTree t ) {
-	if( t->left!=NULL) {
-		t->left = recSimplify(t->left);
-	}
-	if(t->right!=NULL) {
-		t->right = recSimplify(t->right);
-	}
-	
-	if(t->left == NULL && t->right == NULL) return t;
-	else if(t->t.symbol=='~' && t->left->t.symbol == 'T') {
-		t->t.symbol='F';
-		free(t->left);
-		return t;
-	}
-	else if(t->t.symbol=='~' && t->left->t.symbol == 'F'){
-		t->t.symbol='T';
-		free(t->left);
-		return t;
-	}
-	else if(t->t.symbol=='~' && t->left->tt == Identifier) return t; 
-	else if(t->t.symbol=='~' && t->left->t.symbol == '~' && t->left->left->tt == Identifier) {
-		*t = newFormTreeNode(Identifier, tok, NULL, NULL);
-		
-		return t;
-	else if (
-}*/
+FormTree copyTree(FormTree tree) {
+  // copy subtrees, and add them to new tree
+  return tree == NULL ? NULL : newFormTreeNode(
+    tree->tt,
+    tree->t,
+    copyTree(tree->left),
+    copyTree(tree->right)
+  );
+}
+
 
 FormTree childToParent( FormTree t, char c){
   if (c=='l'){
@@ -60,8 +43,7 @@ FormTree recSimplify ( FormTree t ) {
 		t->left->t.symbol='T';
     return t=childToParent(t,'l');
 	}
-  if(t->t.symbol=='~' && t->left->t.symbol == '~' && 
-    t->left->left->tt == Identifier) {
+  if(t->t.symbol=='~' && t->left->t.symbol == '~') {
     t->left=childToParent(t->left,'l');
     return t=childToParent(t,'l');
   }
@@ -149,6 +131,61 @@ FormTree recSimplify ( FormTree t ) {
 
 void simplify( FormTree *t){
   *t=recSimplify(*t);
+  return;
+}
+
+FormTree disToCon( FormTree t){
+  t->t.symbol='~';
+  t->left=newFormTreeNode(Symbol,t->t,t->left,t->right);
+  t->right=NULL;
+  t->left->left=newFormTreeNode(Symbol,t->t,t->left->left,NULL);
+  t->left->right=newFormTreeNode(Symbol,t->t,t->left->right,NULL);
+  t->left->t.symbol='&';
+  return t;
+}
+
+FormTree impToDis( FormTree t){
+  t->t.symbol='|';
+  t->left=newFormTreeNode(Symbol,t->t,t->left,NULL);
+  t->left->t.symbol='~';
+  return t;
+}
+
+FormTree biToCon( FormTree t){
+  t->t.symbol='|';
+  t->left=newFormTreeNode(Symbol,t->t,t->left,t->right);
+  t->left->t.symbol='&';
+  FormTree copy=copyTree(t->left);
+  copy->left=newFormTreeNode(Symbol,t->t,copy->left,NULL);
+  copy->left->t.symbol='~';
+  copy->right=newFormTreeNode(Symbol,copy->left->t,copy->right,NULL);
+  t->right=copy;
+  return t;
+}
+
+
+FormTree recTranslate( FormTree t){
+  if(t==NULL) {
+    return t;
+  }
+  t->left = recTranslate(t->left);
+  t->right = recTranslate(t->right);
+  if (t->t.symbol=='|'){
+    return t=disToCon(t);
+  }
+  if (t->t.symbol=='>'){
+    t=impToDis(t);
+    return t=disToCon(t);
+  }
+  if (t->t.symbol=='<'){
+    t=biToCon(t);
+    return t=disToCon(t);
+  }
+  return t;
+}
+
+void translate( FormTree *t){
+  *t=recTranslate(*t);
   return;
 }
 	
@@ -244,10 +281,17 @@ int main(int argc, char *argv[]) {
       printf("with parentheses: ");
       int max=0;
       printTree(t,0,&max);
-      
       printf("\n");
-
       printf("complexity: %d\n", max);
+      printf("simplified: ");
+      simplify(&t);
+      printTree(t,0,&max);
+      printf("\n");
+      printf("translated: ");
+      translate(&t);
+      printTree(t,0,&max);
+      printf("\n");
+      printf("simplified: ");
       simplify(&t);
       printTree(t,0,&max);
       freeTree(t);
