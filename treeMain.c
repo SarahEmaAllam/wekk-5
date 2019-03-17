@@ -1,7 +1,5 @@
-
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "scanner.h"
 #include "treeForm.h"
 
@@ -15,14 +13,14 @@ FormTree copyTree(FormTree tree) {
   );
 }
 
-
 FormTree childToParent( FormTree t, char c){
-  if (c=='l'){
+  // If c=='l', return left child, free the parent and the right child
+  if (c=='l'){  
     FormTree t1=t->left;
     freeTree(t->right);
     free(t);
     return t1;
-  }
+  } // else, return the right child, free the parent and the left child
   FormTree t1=t->right;
   freeTree(t->left);
   free(t);
@@ -35,8 +33,9 @@ FormTree recSimplify ( FormTree t ) {
   }
   t->left = recSimplify(t->left);
   t->right = recSimplify(t->right);
-  if(t->t.symbol=='~' && t->left->t.symbol == 'T') { // NEGATION
-		t->left->t.symbol='F';
+  // Negation
+  if(t->t.symbol=='~' && t->left->t.symbol == 'T') { 
+    t->left->t.symbol='F';
     return t=childToParent(t,'l');
 	}
 	if(t->t.symbol=='~' && t->left->t.symbol == 'F'){
@@ -44,11 +43,13 @@ FormTree recSimplify ( FormTree t ) {
     return t=childToParent(t,'l');
 	}
   if(t->t.symbol=='~' && t->left->t.symbol == '~') {
+    /* Call childToParent twice so the first negation changes into the 
+      formula*/
     t->left=childToParent(t->left,'l');
     return t=childToParent(t,'l');
   }
-  
-  if(t->t.symbol=='|' && t->left->tt == Symbol) { // DISJUNCTION
+  // Disjunction
+  if(t->t.symbol=='|' && t->left->tt == Symbol) { 
     if (t->left->t.symbol == 'T'){
       return t=childToParent(t,'l');
     }
@@ -64,8 +65,8 @@ FormTree recSimplify ( FormTree t ) {
       return t=childToParent(t,'l');
     }
   }
-  
-  if(t->t.symbol=='&' && t->left->tt == Symbol) { // CONJUNCTION
+  // Conjuction
+  if(t->t.symbol=='&' && t->left->tt == Symbol) { 
     if (t->left->t.symbol == 'F'){
       return t=childToParent(t,'l');
     }
@@ -81,8 +82,8 @@ FormTree recSimplify ( FormTree t ) {
       return t=childToParent(t,'l');
     }
   }
-  
-  if(t->t.symbol=='>' && t->left->tt == Symbol) { // IMPLICATION
+  // Implication
+  if(t->t.symbol=='>' && t->left->tt == Symbol) { 
     if (t->left->t.symbol == 'F'){
       t->left->t.symbol='T';
       return t=childToParent(t,'l');
@@ -99,11 +100,13 @@ FormTree recSimplify ( FormTree t ) {
       t->t.symbol='~';
       freeTree(t->right);
       t->right=NULL;
-      return t;
+      /* a negation is added, so call recSimplify again to possibly 
+       simplify it further*/
+      return recSimplify(t);
     }
   }
-  
-  if(t->t.symbol=='<' && t->left->tt == Symbol) {   //BICONDITIONAL
+  // Biconditional
+  if(t->t.symbol=='<' && t->left->tt == Symbol) { 
     if (t->left->t.symbol == 'T'){
       return t=childToParent(t,'r');
     }
@@ -112,7 +115,7 @@ FormTree recSimplify ( FormTree t ) {
       free(t->left);
       t->left=t->right;
       t->right=NULL;
-      return t;
+      return recSimplify(t);
     }
   }
   if(t->t.symbol=='<' && t->right->tt == Symbol) {
@@ -123,7 +126,7 @@ FormTree recSimplify ( FormTree t ) {
       t->t.symbol='~';
       freeTree(t->right);
       t->right=NULL;
-      return t;
+      return recSimplify(t);
     }
   }
   return t;
@@ -136,11 +139,14 @@ void simplify( FormTree *t){
 
 FormTree disToCon( FormTree t){
   t->t.symbol='~';
+  /* Form new left conjuctional subtree with the children of t, and make 
+    that the left child of t */
   t->left=newFormTreeNode(Symbol,t->t,t->left,t->right);
+  t->left->t.symbol='&';
   t->right=NULL;
+  // Add two negations to the conjuctional subtree
   t->left->left=newFormTreeNode(Symbol,t->t,t->left->left,NULL);
   t->left->right=newFormTreeNode(Symbol,t->t,t->left->right,NULL);
-  t->left->t.symbol='&';
   return t;
 }
 
@@ -155,14 +161,15 @@ FormTree biToCon( FormTree t){
   t->t.symbol='|';
   t->left=newFormTreeNode(Symbol,t->t,t->left,t->right);
   t->left->t.symbol='&';
+  // Copy the left child of t and make it the right child of t
   FormTree copy=copyTree(t->left);
+  // Add two negations to the copied tree
   copy->left=newFormTreeNode(Symbol,t->t,copy->left,NULL);
   copy->left->t.symbol='~';
   copy->right=newFormTreeNode(Symbol,copy->left->t,copy->right,NULL);
   t->right=copy;
   return t;
 }
-
 
 FormTree recTranslate( FormTree t){
   if(t==NULL) {
@@ -189,8 +196,6 @@ void translate( FormTree *t){
   return;
 }
 	
-
-
 int acceptCharacterEx(List *lp, char c) {
   if (*lp != NULL && (*lp)->tt == Symbol && ((*lp)->t).symbol == c ) {
     *lp = (*lp)->next;
@@ -222,6 +227,7 @@ int treeImplication(List *lp, FormTree *t) {
     return 0;
   }
   if (acceptCharacterEx(lp,'-')) {
+    // If no '>' is accepted after '-' , return 0
     if (!acceptCharacterEx(lp,'>')){
       return 0;
     }
@@ -294,6 +300,7 @@ int main(int argc, char *argv[]) {
       printf("simplified: ");
       simplify(&t);
       printTree(t,0,&max);
+      printf("\n");
       freeTree(t);
     } else {
       printf("this is not a formula\n");
@@ -310,4 +317,3 @@ int main(int argc, char *argv[]) {
   printf("good bye\n");
   return 0;
 }
-
